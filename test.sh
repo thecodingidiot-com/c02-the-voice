@@ -1,9 +1,9 @@
 #!/bin/bash
 # c02 — The Voice / test.sh
 #
-# Tests il_printf against libc printf.
-# Copy this file into your working directory alongside libidiot.a and all
-# il_*.c source files, then run:
+# Tests tci_printf against libc printf.
+# Copy this file into your working directory alongside libtci.a and all
+# tci_*.c source files, then run:
 #
 #   bash test.sh
 
@@ -85,7 +85,7 @@ preflight() {
 write_runner() {
     cat > _runner.c << 'RUNNER_EOF'
 #define _POSIX_C_SOURCE 200809L
-#include "idiotlib.h"
+#include "libtci.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -107,32 +107,32 @@ static void check(const char *label, int ok)
 }
 
 /*
- * Each test redirects stdout, calls il_printf, restores stdout, then
+ * Each test redirects stdout, calls tci_printf, restores stdout, then
  * compares output and return value against snprintf.
  *
  * ##__VA_ARGS__ is a GCC/Clang extension accepted in -std=c99 mode.
  */
 #define TEST(label, fmt, ...) do {                                      \
-    char    il_buf[2048];                                               \
+    char    tci_buf[2048];                                               \
     char    libc_buf[2048];                                             \
     int     pipefd[2];                                                  \
     int     saved_fd;                                                   \
-    int     il_ret;                                                     \
+    int     tci_ret;                                                     \
     int     libc_ret;                                                   \
     ssize_t _n;                                                         \
     pipe(pipefd);                                                       \
     saved_fd = dup(STDOUT_FILENO);                                      \
     dup2(pipefd[1], STDOUT_FILENO);                                     \
     close(pipefd[1]);                                                   \
-    il_ret = il_printf(fmt, ##__VA_ARGS__);                             \
+    tci_ret = tci_printf(fmt, ##__VA_ARGS__);                             \
     dup2(saved_fd, STDOUT_FILENO);                                      \
     close(saved_fd);                                                    \
-    _n = read(pipefd[0], il_buf, sizeof(il_buf) - 1);                  \
+    _n = read(pipefd[0], tci_buf, sizeof(tci_buf) - 1);                  \
     close(pipefd[0]);                                                   \
-    il_buf[_n > 0 ? _n : 0] = '\0';                                    \
+    tci_buf[_n > 0 ? _n : 0] = '\0';                                    \
     libc_ret = snprintf(libc_buf, sizeof(libc_buf), fmt, ##__VA_ARGS__);\
-    check(label ": output",   strcmp(il_buf, libc_buf) == 0);          \
-    check(label ": retval",   il_ret == libc_ret);                     \
+    check(label ": output",   strcmp(tci_buf, libc_buf) == 0);          \
+    check(label ": retval",   tci_ret == libc_ret);                     \
 } while (0)
 
 /* ── %c ── */
@@ -296,8 +296,8 @@ check_make() {
         grep -i 'warning' "$WORK_DIR/make.log" | head -5
         return 1
     fi
-    if [[ ! -f libidiot.a ]]; then
-        fail "make re: libidiot.a not produced"
+    if [[ ! -f libtci.a ]]; then
+        fail "make re: libtci.a not produced"
         return 1
     fi
     pass "make re"
@@ -308,7 +308,7 @@ check_runner() {
     echo
     echo "  check 2/5 — compile test runner"
     gcc -Wall -Wextra -g -std=c99 \
-        _runner.c -L. -lidiot -I. -o _runner \
+        _runner.c -L. -ltci -I. -o _runner \
         > "$WORK_DIR/compile.log" 2>&1
     if [[ $? -ne 0 ]]; then
         fail "compile test runner"
@@ -365,7 +365,7 @@ check_sanitisers() {
     echo "  check 5/5 — sanitisers"
 
     gcc -Wall -Wextra -g -std=c99 $san_flags \
-        il_*.c _runner.c -I. -o _runner_san \
+        tci_*.c _runner.c -I. -o _runner_san \
         > "$WORK_DIR/san_build.log" 2>&1
     if [[ $? -ne 0 ]]; then
         fail "sanitisers: build failed"
@@ -381,7 +381,7 @@ check_sanitisers() {
         printf "         (ASan shadow mapping unavailable on this system,"
         printf " retrying with UBSan only)\n"
         gcc -Wall -Wextra -g -std=c99 $san_flags \
-            il_*.c _runner.c -I. -o _runner_san \
+            tci_*.c _runner.c -I. -o _runner_san \
             > "$WORK_DIR/san_build.log" 2>&1
         if [[ $? -ne 0 ]]; then
             fail "sanitisers: build failed"
@@ -409,16 +409,16 @@ c02 — The Voice / test.sh
 
 Usage: bash test.sh [--help]
 
-Runs 5 checks against your libidiot.a and il_*.c source files.
+Runs 5 checks against your libtci.a and tci_*.c source files.
 
 Checks:
-  1. make re       Clean rebuild. libidiot.a must be produced with no warnings.
-  2. compile       Links an embedded test runner against libidiot.a.
+  1. make re       Clean rebuild. libtci.a must be produced with no warnings.
+  2. compile       Links an embedded test runner against libtci.a.
   3. correctness   Runs the test runner. Every check must pass.
-                   il_printf output and return value are compared against
+                   tci_printf output and return value are compared against
                    libc printf for each format string.
   4. valgrind      Runs the test runner under valgrind. No leaks or errors.
-  5. sanitisers    Recompiles il_*.c directly with -fsanitize=address,undefined.
+  5. sanitisers    Recompiles tci_*.c directly with -fsanitize=address,undefined.
                    Runs the result. No sanitiser errors.
 HELP_EOF
 }
@@ -455,7 +455,7 @@ hr
 if [[ $fail_count -eq 0 ]]; then
     echo
     printf "  ${C_GREEN}${C_BOLD}All checks passed.${C_RESET}"
-    printf " il_printf matches libc printf, clean and memory-safe.\n"
+    printf " tci_printf matches libc printf, clean and memory-safe.\n"
     echo "  Every byte it writes — the same output as the standard library,"
     echo "  written by hand, tested to the same standard."
     echo

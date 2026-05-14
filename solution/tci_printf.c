@@ -1,4 +1,4 @@
-#include "idiotlib.h"
+#include "libtci.h"
 #include <stdarg.h>   /* va_list, va_start, va_arg, va_end */
 #include <unistd.h>   /* write() */
 #include <stdint.h>   /* uintptr_t — pointer-to-integer cast for %p */
@@ -25,46 +25,46 @@ typedef struct s_fmt
 }   t_fmt;
 
 /* forward declarations — all helpers are file-scoped */
-static int  il_putchar_fd(char c, int fd);
-static int  il_putstr_fd(char *s, int fd);
-static int  il_putnbr_base(unsigned long n, const char *base, int fd);
+static int  tci_putchar_fd(char c, int fd);
+static int  tci_putstr_fd(char *s, int fd);
+static int  tci_putnbr_base(unsigned long n, const char *base, int fd);
 static int  pad_chars(char c, int n, int fd);
-static int  il_print_char(int c, t_fmt *f);
-static int  il_print_str(char *s, t_fmt *f);
-static int  il_print_ptr(void *ptr);
-static int  il_print_signed(int n, t_fmt *f);
-static int  il_print_unsigned(unsigned int n, const char *base, t_fmt *f);
+static int  tci_print_char(int c, t_fmt *f);
+static int  tci_print_str(char *s, t_fmt *f);
+static int  tci_print_ptr(void *ptr);
+static int  tci_print_signed(int n, t_fmt *f);
+static int  tci_print_unsigned(unsigned int n, const char *base, t_fmt *f);
 static int  parse_fmt(const char *fmt, int i, t_fmt *f, va_list *args);
 static int  dispatch_fmt(char spec, va_list *args, t_fmt *f);
 
 /*
- * il_putchar_fd — write one character to fd.
+ * tci_putchar_fd — write one character to fd.
  * Returns 1 (bytes written) so callers can accumulate the total count.
  */
-static int  il_putchar_fd(char c, int fd)
+static int  tci_putchar_fd(char c, int fd)
 {
     write(fd, &c, 1);
     return (1);
 }
 
 /*
- * il_putstr_fd — write a null-terminated string to fd.
+ * tci_putstr_fd — write a null-terminated string to fd.
  * NULL is treated as the string "(null)", matching libc printf behaviour.
  * Returns the number of bytes written.
  */
-static int  il_putstr_fd(char *s, int fd)
+static int  tci_putstr_fd(char *s, int fd)
 {
     int  len;
 
     if (!s)
-        return (il_putstr_fd("(null)", fd));
-    len = (int)il_strlen(s);
+        return (tci_putstr_fd("(null)", fd));
+    len = (int)tci_strlen(s);
     write(fd, s, len);
     return (len);
 }
 
 /*
- * il_putnbr_base — write an unsigned long in the given base to fd.
+ * tci_putnbr_base — write an unsigned long in the given base to fd.
  *
  * base is a string of digit characters: "0123456789" for decimal,
  * "0123456789abcdef" for lowercase hex, etc.  The length of the base string
@@ -73,7 +73,7 @@ static int  il_putstr_fd(char *s, int fd)
  * The digits are computed in reverse order (least-significant first), stored
  * in a local buffer, then reversed before writing.  Returns digit count.
  */
-static int  il_putnbr_base(unsigned long n, const char *base, int fd)
+static int  tci_putnbr_base(unsigned long n, const char *base, int fd)
 {
     char  buf[64];
     int   blen;
@@ -81,7 +81,7 @@ static int  il_putnbr_base(unsigned long n, const char *base, int fd)
     int   i;
     char  tmp;
 
-    blen = (int)il_strlen(base);
+    blen = (int)tci_strlen(base);
     len = 0;
     if (n == 0) {          /* zero must produce at least one digit */
         buf[len++] = base[0];
@@ -120,7 +120,7 @@ static int  pad_chars(char c, int n, int fd)
 }
 
 /*
- * il_print_char — handle the %c specifier.
+ * tci_print_char — handle the %c specifier.
  *
  * A single character occupies one byte of content; the field width applies
  * around it.  The character value arrives as int because va_arg promotes
@@ -129,7 +129,7 @@ static int  pad_chars(char c, int n, int fd)
  *   %5c   'X'  →  "    X"    (right-aligned, 4 spaces then the char)
  *   %-5c  'X'  →  "X    "    (left-aligned, char then 4 spaces)
  */
-static int  il_print_char(int c, t_fmt *f)
+static int  tci_print_char(int c, t_fmt *f)
 {
     int  pad;
     int  count;
@@ -138,14 +138,14 @@ static int  il_print_char(int c, t_fmt *f)
     count = 0;
     if (!f->minus)
         count += pad_chars(' ', pad, 1);    /* leading spaces for right-align */
-    count += il_putchar_fd((unsigned char)c, 1);
+    count += tci_putchar_fd((unsigned char)c, 1);
     if (f->minus)
         count += pad_chars(' ', pad, 1);    /* trailing spaces for left-align */
     return (count);
 }
 
 /*
- * il_print_str — handle the %s specifier.
+ * tci_print_str — handle the %s specifier.
  *
  * Precision truncates the string to at most f->precision characters (bytes,
  * not Unicode code points).  Width then pads the (possibly truncated) result.
@@ -155,7 +155,7 @@ static int  il_print_char(int c, t_fmt *f)
  *   %.3s   "hello"  →  "hel"           (truncated)
  *   %10.3s "hello"  →  "       hel"    (truncated then right-aligned)
  */
-static int  il_print_str(char *s, t_fmt *f)
+static int  tci_print_str(char *s, t_fmt *f)
 {
     int  slen;
     int  pad;
@@ -163,7 +163,7 @@ static int  il_print_str(char *s, t_fmt *f)
 
     if (!s)
         s = "(null)";
-    slen = (int)il_strlen(s);
+    slen = (int)tci_strlen(s);
     if (f->has_precision && f->precision < slen)
         slen = f->precision;         /* clamp to precision */
     pad = f->width > slen ? f->width - slen : 0;
@@ -177,7 +177,7 @@ static int  il_print_str(char *s, t_fmt *f)
 }
 
 /*
- * il_print_ptr — handle the %p specifier.
+ * tci_print_ptr — handle the %p specifier.
  *
  * Pointers are always printed as "0x" followed by a lowercase hex address.
  * NULL is the special case "(nil)", matching glibc printf behaviour.
@@ -186,19 +186,19 @@ static int  il_print_str(char *s, t_fmt *f)
  * uintptr_t is used for the cast because it is guaranteed wide enough to hold
  * any pointer value without loss, unlike unsigned int or unsigned long.
  */
-static int  il_print_ptr(void *ptr)
+static int  tci_print_ptr(void *ptr)
 {
     int  count;
 
     if (!ptr)
-        return (il_putstr_fd("(nil)", 1));
+        return (tci_putstr_fd("(nil)", 1));
     count = (int)write(1, "0x", 2);
-    count += il_putnbr_base((uintptr_t)ptr, "0123456789abcdef", 1);
+    count += tci_putnbr_base((uintptr_t)ptr, "0123456789abcdef", 1);
     return (count);
 }
 
 /*
- * il_print_signed — handle the %d and %i specifiers.
+ * tci_print_signed — handle the %d and %i specifiers.
  *
  * The value is converted to long before negating so that INT_MIN (-2147483648)
  * does not overflow: -INT_MIN is undefined as int because INT_MAX is 2147483647.
@@ -217,7 +217,7 @@ static int  il_print_ptr(void *ptr)
  *   % d     7   →  " 7"
  *   %.5d    7   →  "00007"
  */
-static int  il_print_signed(int n, t_fmt *f)
+static int  tci_print_signed(int n, t_fmt *f)
 {
     char  buf[20];    /* enough for any 32-bit decimal (max 10 digits + sign) */
     int   len;
@@ -264,7 +264,7 @@ static int  il_print_signed(int n, t_fmt *f)
     if (!f->minus && !(f->zero && !f->has_precision))
         count += pad_chars(' ', pad, 1);    /* space-pad before sign */
     if (sign)
-        count += il_putchar_fd(sign, 1);
+        count += tci_putchar_fd(sign, 1);
     if (!f->minus && f->zero && !f->has_precision)
         count += pad_chars('0', pad, 1);    /* zero-pad after sign */
     count += pad_chars('0', prec_pad, 1);   /* precision zero-fill */
@@ -275,7 +275,7 @@ static int  il_print_signed(int n, t_fmt *f)
 }
 
 /*
- * il_print_unsigned — handle %u, %x, and %X.
+ * tci_print_unsigned — handle %u, %x, and %X.
  *
  * The base string selects the output format:
  *   "0123456789"        → decimal  (%u)
@@ -292,7 +292,7 @@ static int  il_print_signed(int n, t_fmt *f)
  * Layout:
  *   [spaces]  [prefix]  [zeros from 0-flag or precision]  [digits]  [spaces]
  */
-static int  il_print_unsigned(unsigned int n, const char *base, t_fmt *f)
+static int  tci_print_unsigned(unsigned int n, const char *base, t_fmt *f)
 {
     char          buf[20];
     int           len;
@@ -308,7 +308,7 @@ static int  il_print_unsigned(unsigned int n, const char *base, t_fmt *f)
     char          tmp;
 
     val = (unsigned long)n;
-    blen = (int)il_strlen(base);
+    blen = (int)tci_strlen(base);
     prefix = "";
     prefix_len = 0;
     if (f->hash && n != 0) {
@@ -317,7 +317,7 @@ static int  il_print_unsigned(unsigned int n, const char *base, t_fmt *f)
             prefix = "0x";
         else if (blen == 16)
             prefix = "0X";
-        prefix_len = (int)il_strlen(prefix);
+        prefix_len = (int)tci_strlen(prefix);
     }
     len = 0;
     if (val == 0)
@@ -370,7 +370,7 @@ static int  il_print_unsigned(unsigned int n, const char *base, t_fmt *f)
  */
 static int  parse_fmt(const char *fmt, int i, t_fmt *f, va_list *args)
 {
-    il_memset(f, 0, sizeof(*f));
+    tci_memset(f, 0, sizeof(*f));
     f->precision = -1;
     /* consume flag characters in any order */
     while (fmt[i] == '-' || fmt[i] == '0' || fmt[i] == '+'
@@ -426,29 +426,29 @@ static int  parse_fmt(const char *fmt, int i, t_fmt *f, va_list *args)
 static int  dispatch_fmt(char spec, va_list *args, t_fmt *f)
 {
     if (spec == 'c')
-        return (il_print_char(va_arg(*args, int), f));
+        return (tci_print_char(va_arg(*args, int), f));
     if (spec == 's')
-        return (il_print_str(va_arg(*args, char *), f));
+        return (tci_print_str(va_arg(*args, char *), f));
     if (spec == 'p')
-        return (il_print_ptr(va_arg(*args, void *)));
+        return (tci_print_ptr(va_arg(*args, void *)));
     if (spec == 'd' || spec == 'i')
-        return (il_print_signed(va_arg(*args, int), f));
+        return (tci_print_signed(va_arg(*args, int), f));
     if (spec == 'u')
-        return (il_print_unsigned(va_arg(*args, unsigned int),
+        return (tci_print_unsigned(va_arg(*args, unsigned int),
                 "0123456789", f));
     if (spec == 'x')
-        return (il_print_unsigned(va_arg(*args, unsigned int),
+        return (tci_print_unsigned(va_arg(*args, unsigned int),
                 "0123456789abcdef", f));
     if (spec == 'X')
-        return (il_print_unsigned(va_arg(*args, unsigned int),
+        return (tci_print_unsigned(va_arg(*args, unsigned int),
                 "0123456789ABCDEF", f));
     if (spec == '%')
-        return (il_putchar_fd('%', 1));
-    return (il_putchar_fd('%', 1) + il_putchar_fd(spec, 1));
+        return (tci_putchar_fd('%', 1));
+    return (tci_putchar_fd('%', 1) + tci_putchar_fd(spec, 1));
 }
 
 /*
- * il_printf — variadic output function matching libc printf.
+ * tci_printf — variadic output function matching libc printf.
  *
  * Walks the format string one character at a time:
  *   - Literal characters are written directly to stdout (fd 1).
@@ -460,7 +460,7 @@ static int  dispatch_fmt(char spec, va_list *args, t_fmt *f)
  *
  * Returns the total number of characters written, matching libc printf.
  */
-int     il_printf(const char *fmt, ...)
+int     tci_printf(const char *fmt, ...)
 {
     va_list  args;
     int      count;
@@ -476,7 +476,7 @@ int     il_printf(const char *fmt, ...)
             i = parse_fmt(fmt, i, &f, &args);          /* parse modifiers     */
             count += dispatch_fmt(fmt[i], &args, &f);  /* write converted arg */
         } else {
-            count += il_putchar_fd(fmt[i], 1);         /* literal character   */
+            count += tci_putchar_fd(fmt[i], 1);         /* literal character   */
         }
         i++;
     }

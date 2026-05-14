@@ -4,7 +4,7 @@
 #include <stdint.h>   /* uintptr_t — pointer-to-integer cast for %p */
 
 /*
- * t_fmt — parsed flags, width, and precision for one conversion specifier.
+ * fmt_t — parsed flags, width, and precision for one conversion specifier.
  *
  * Flags are set to 1 when present in the format string, 0 otherwise.
  * width      — minimum field width; output is padded to this many characters.
@@ -22,20 +22,20 @@ typedef struct s_fmt
     int  width;          /* minimum total field width                   */
     int  precision;      /* precision value, if has_precision is set    */
     int  has_precision;  /* 1 if a '.' was present in the specifier     */
-}   t_fmt;
+}   fmt_t;
 
 /* forward declarations — all helpers are file-scoped */
 static int  tci_putchar_fd(char c, int fd);
 static int  tci_putstr_fd(char *s, int fd);
 static int  tci_putnbr_base(unsigned long n, const char *base, int fd);
 static int  pad_chars(char c, int n, int fd);
-static int  tci_print_char(int c, t_fmt *f);
-static int  tci_print_str(char *s, t_fmt *f);
+static int  tci_print_char(int c, fmt_t *f);
+static int  tci_print_str(char *s, fmt_t *f);
 static int  tci_print_ptr(void *ptr);
-static int  tci_print_signed(int n, t_fmt *f);
-static int  tci_print_unsigned(unsigned int n, const char *base, t_fmt *f);
-static int  parse_fmt(const char *fmt, int i, t_fmt *f, va_list *args);
-static int  dispatch_fmt(char spec, va_list *args, t_fmt *f);
+static int  tci_print_signed(int n, fmt_t *f);
+static int  tci_print_unsigned(unsigned int n, const char *base, fmt_t *f);
+static int  parse_fmt(const char *fmt, int i, fmt_t *f, va_list *args);
+static int  dispatch_fmt(char spec, va_list *args, fmt_t *f);
 
 /*
  * tci_putchar_fd — write one character to fd.
@@ -129,7 +129,7 @@ static int  pad_chars(char c, int n, int fd)
  *   %5c   'X'  →  "    X"    (right-aligned, 4 spaces then the char)
  *   %-5c  'X'  →  "X    "    (left-aligned, char then 4 spaces)
  */
-static int  tci_print_char(int c, t_fmt *f)
+static int  tci_print_char(int c, fmt_t *f)
 {
     int  pad;
     int  count;
@@ -155,7 +155,7 @@ static int  tci_print_char(int c, t_fmt *f)
  *   %.3s   "hello"  →  "hel"           (truncated)
  *   %10.3s "hello"  →  "       hel"    (truncated then right-aligned)
  */
-static int  tci_print_str(char *s, t_fmt *f)
+static int  tci_print_str(char *s, fmt_t *f)
 {
     int  slen;
     int  pad;
@@ -217,7 +217,7 @@ static int  tci_print_ptr(void *ptr)
  *   % d     7   →  " 7"
  *   %.5d    7   →  "00007"
  */
-static int  tci_print_signed(int n, t_fmt *f)
+static int  tci_print_signed(int n, fmt_t *f)
 {
     char  buf[20];    /* enough for any 32-bit decimal (max 10 digits + sign) */
     int   len;
@@ -292,7 +292,7 @@ static int  tci_print_signed(int n, t_fmt *f)
  * Layout:
  *   [spaces]  [prefix]  [zeros from 0-flag or precision]  [digits]  [spaces]
  */
-static int  tci_print_unsigned(unsigned int n, const char *base, t_fmt *f)
+static int  tci_print_unsigned(unsigned int n, const char *base, fmt_t *f)
 {
     char          buf[20];
     int           len;
@@ -368,7 +368,7 @@ static int  tci_print_unsigned(unsigned int n, const char *base, t_fmt *f)
  *   '-' overrides '0'   (left-align makes zero-padding meaningless)
  *   '+' overrides ' '   (explicit sign supersedes the space prefix)
  */
-static int  parse_fmt(const char *fmt, int i, t_fmt *f, va_list *args)
+static int  parse_fmt(const char *fmt, int i, fmt_t *f, va_list *args)
 {
     tci_memset(f, 0, sizeof(*f));
     f->precision = -1;
@@ -423,7 +423,7 @@ static int  parse_fmt(const char *fmt, int i, t_fmt *f, va_list *args)
  * call — advancing the argument cursor for '%%' would corrupt every subsequent
  * specifier silently.
  */
-static int  dispatch_fmt(char spec, va_list *args, t_fmt *f)
+static int  dispatch_fmt(char spec, va_list *args, fmt_t *f)
 {
     if (spec == 'c')
         return (tci_print_char(va_arg(*args, int), f));
@@ -465,7 +465,7 @@ int     tci_printf(const char *fmt, ...)
     va_list  args;
     int      count;
     int      i;
-    t_fmt    f;
+    fmt_t    f;
 
     va_start(args, fmt);
     count = 0;

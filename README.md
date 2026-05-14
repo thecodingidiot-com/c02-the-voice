@@ -48,7 +48,7 @@ the only permitted output primitive.
 **Bonus:** flags (`-`, `0`, `+`, space, `#`), field width, precision.
 
 **Start from libtci.** Add `tci_printf.c` to the Makefile and implement it
-alongside the existing 37 functions. `make re` must produce `libtci.a` with
+alongside the existing 29 functions. `make re` must produce `libtci.a` with
 no warnings.
 
 Build and test your own version first. Use `solution/` to compare once you

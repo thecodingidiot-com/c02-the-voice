@@ -71,4 +71,4 @@ are done, not before.
 
 ## License
 
-GPLv2. See [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE).
